@@ -4,6 +4,7 @@ import cron from 'node-cron';
 import sqlite3Module from 'sqlite3';
 const sqlite3 = sqlite3Module.verbose();
 import { WebClient } from '@slack/web-api';
+import dotenv from 'dotenv';
 dotenv.config();
 
 // Import the scraping scripts
@@ -56,10 +57,18 @@ async function runScrapingProcess() {
 		// Use a proper limit (e.g. 5 for dev mode, or Infinity for production)
 		const limit = devMode ? 5 : Infinity;
 
-		// Execute the scraping and processing modules using the same db connection.
-		await jobScraper(limit, db);
-		await companyScraper(db);
-		await jobProcessor(db);
+        // Execute the scraping and processing modules using the same db connection.
+        console.log("🚀 Starting job scraping module...");
+        await jobScraper(limit, db);
+        console.log("✅ Job scraping module completed.");
+
+        console.log("🏢 Starting company scraping module...");
+        await companyScraper(db);
+        console.log("✅ Company scraping module completed.");
+
+        console.log("🔧 Starting job processing module...");
+        await jobProcessor(db);
+        console.log("✅ Job processing module completed.");
 
 		// (Optional) Clear temporary data after processing
 		await new Promise((resolve, reject) => {

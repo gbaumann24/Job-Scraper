@@ -1,3 +1,5 @@
+import sqlite3Pkg from 'sqlite3';
+const sqlite3 = sqlite3Pkg.verbose();
 // initializeTables.js (or within orchestrator.js)
 async function initializeTables() {
 	return new Promise((resolve, reject) => {
