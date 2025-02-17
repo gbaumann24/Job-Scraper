@@ -2,6 +2,8 @@
   "dependencies": {
     "node-fetch": "^3.3.2",
     "openai": "^4.85.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "node-cron": "^3.0.2",
+    "@slack/web-api": "^6.8.1"
   }
 }

@@ -1,5 +1,5 @@
-const sqlite3 = require('sqlite3').verbose();
-
+import sqlite3Pkg from 'sqlite3';
+const sqlite3 = sqlite3Pkg.verbose();
 
 // Mapping von Industry-ID → Branchenname (Beispielwerte)
 const industryMap = {
@@ -32,37 +32,26 @@ const industryMap = {
 // Hilfsfunktion: Verzögerung (z.B. 1 Sekunde)
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function run() {
-	// 1) Öffne die jobs.db
-	const db = new sqlite3.Database('jobs.db');
-
-	// 2) Lösche die Tabelle companyData (falls sie existiert)
-	await new Promise((resolve, reject) => {
-		db.run(`DROP TABLE IF EXISTS companyData`, (err) => {
-			if (err) return reject(err);
-			resolve();
-		});
-	});
-
+export async function scrapeCompanies(db) {
 	// 3) Erstelle die neue Tabelle companyData.
 	//    Hier wird die Spalte "id" (Primärschlüssel) als TEXT angelegt, wobei id der companyId entspricht.
 	//    Zusätzlich wird companyName aufgenommen.
-	await new Promise((resolve, reject) => {
-		db.run(
-			`CREATE TABLE companyData (
-         id TEXT PRIMARY KEY,
-         companyName TEXT,
-         industry TEXT,
-         employee_count TEXT,
-         founding_year TEXT,
-         toplogo_file TEXT
-       )`,
-			(err) => {
-				if (err) return reject(err);
-				resolve();
-			}
-		);
-	});
+	// await new Promise((resolve, reject) => {
+	// 	db.run(
+	// 		`CREATE TABLE companyData (
+	//      id TEXT PRIMARY KEY,
+	//      companyName TEXT,
+	//      industry TEXT,
+	//      employee_count TEXT,
+	//      founding_year TEXT,
+	//      toplogo_file TEXT
+	//    )`,
+	// 		(err) => {
+	// 			if (err) return reject(err);
+	// 			resolve();
+	// 		}
+	// 	);
+	// });
 
 	// 4) Lese alle eindeutigen Zeilen aus der newJobLinks-Tabelle
 	//    Dabei werden companyId und companyName ausgelesen.
@@ -147,11 +136,7 @@ async function run() {
 		await delay(1000);
 	}
 
-	// 10) Schließe die Datenbank
-	db.close((err) => {
-		if (err) console.error('Fehler beim Schließen der DB:', err);
-		else console.log('\nFertig! DB geschlossen.');
-	});
 }
 
-run().catch((err) => console.error('Fehler im Prozess:', err));
+
+export default scrapeCompanies;

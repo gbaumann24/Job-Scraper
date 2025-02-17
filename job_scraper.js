@@ -1,5 +1,6 @@
-const sqlite3 = require('sqlite3').verbose();
-const { URLSearchParams } = require('url');
+import sqlite3Pkg from 'sqlite3';
+const sqlite3 = sqlite3Pkg.verbose();
+import { URLSearchParams } from 'url';
 
 /**
  * Formatiert ein Date-Objekt in das Format "YYYY-MM-DD HH:mm:ss"
@@ -19,18 +20,19 @@ function formatDate(date) {
  * 1. Setzt den Datumsbereich gemäß jobs.ch-Filter: von gestern 00:00:00 bis heute 23:59:59.
  * 2. Ermittelt mit einem ersten Request die Anzahl der Seiten.
  * 3. Paginiert durch alle Seiten und speichert die relevanten Felder in einer SQLite-Datenbank.
+ *
+ * @param {number} amount - Maximale Anzahl an Jobs, die verarbeitet werden sollen.
  */
-async function scrapeJobs() {
+async function jobScraper(amount = Infinity, db) {
 	// Öffne bzw. erstelle die lokale SQLite-Datenbank
-	const db = new sqlite3.Database('jobs.db');
 
 	// Erstelle die Tabelle, falls sie noch nicht existiert
-    db.run(`CREATE TABLE IF NOT EXISTS newJobLinks (
-    id TEXT PRIMARY KEY,
-    initialPublicationDate TEXT,
-    companyName TEXT,
-    companyId TEXT
-  )`);
+	// 	db.run(`CREATE TABLE IF NOT EXISTS newJobLinks (
+	//     id TEXT PRIMARY KEY,
+	//     initialPublicationDate TEXT,
+	//     companyName TEXT,
+	//     companyId TEXT
+	//   )`);
 
 	// Setze den Datumsbereich wie auf jobs.ch:
 	// publicationDateFrom: gestriger Tag um 00:00:00
@@ -62,17 +64,21 @@ async function scrapeJobs() {
 	const numPages = data.numPages || 1;
 	console.log(`Es wurden ${numPages} Seite(n) gefunden.`);
 
-	// Paginiere durch alle Seiten
-	for (let page = 1; page <= numPages; page++) {
+	let jobsScraped = 0;
+	// outer: Label to break out of both loops when limit reached
+	outer: for (let page = 1; page <= numPages; page++) {
 		params.set('page', page.toString());
 		console.log(`Hole Seite ${page} von ${numPages} …`);
 		const res = await fetch(`${baseUrl}?${params.toString()}`);
 		const pageData = await res.json();
-        console.log(`${baseUrl}?${params.toString()}`)
+		console.log(`${baseUrl}?${params.toString()}`);
 
 		const documents = pageData.documents;
 		if (documents && documents.length > 0) {
 			documents.forEach((doc) => {
+				if (jobsScraped >= amount) {
+					return; // This returns from the forEach callback; we use break outer below.
+				}
 				const jobId = doc.id;
 				const initialPublicationDate = doc.initialPublicationDate;
 				const companyName = doc.company && doc.company.name ? doc.company.name : null;
@@ -88,21 +94,23 @@ async function scrapeJobs() {
 						}
 					}
 				);
+				jobsScraped++;
 			});
+			if (jobsScraped >= amount) {
+				console.log(`Limit von ${amount} Jobs erreicht.`);
+				break outer;
+			}
 		} else {
 			console.log(`Keine Jobs auf Seite ${page} gefunden.`);
 		}
 	}
 
-	// Schließe die Datenbankverbindung
-	db.close((err) => {
-		if (err) {
-			return console.error(err.message);
-		}
-		console.log('Die Datenbank wurde erfolgreich geschlossen.');
-	});
+	// Return a summary object
+	return { jobsScraped };
 }
 
-scrapeJobs()
-	.then(() => console.log('Scraping abgeschlossen.'))
-	.catch((err) => console.error('Fehler beim Scraping:', err));
+// jobScraper()
+// 	.then(() => console.log('Scraping abgeschlossen.'))
+// 	.catch((err) => console.error('Fehler beim Scraping:', err));
+
+export default jobScraper;
