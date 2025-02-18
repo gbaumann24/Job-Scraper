@@ -135,7 +135,7 @@ export async function scrapeCompanies(db) {
 		// 9) Kurze Pause, um Rate Limits zu vermeiden
 		await delay(1000);
 	}
-
+	return rows.length;
 }
 
 

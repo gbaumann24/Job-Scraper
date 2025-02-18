@@ -47,9 +47,7 @@ function closeDb(db) {
 // Main orchestration function
 async function runScrapingProcess() {
 	const startTime = new Date();
-	// Initialize stats (update these values as needed in your modules)
-	let stats = { newJobs: 0, companiesScraped: 0, jobsProcessed: 0, errors: [] };
-
+	let errors = []
 	try {
 		// Create & initialize the DB, and get the open connection
 		const db = await initializeTables();
@@ -57,30 +55,32 @@ async function runScrapingProcess() {
 		// Use a proper limit (e.g. 5 for dev mode, or Infinity for production)
 		const limit = devMode ? 5 : Infinity;
 
-        // Execute the scraping and processing modules using the same db connection.
-        console.log("🚀 Starting job scraping module...");
-        await jobScraper(limit, db);
-        console.log("✅ Job scraping module completed.");
+		// Execute the scraping and processing modules using the same db connection.
+		console.log('🚀 Starting job scraping module...');
+		const new_jobs = await jobScraper(limit, db);
+		console.log('✅ Job scraping module completed.');
 
-        console.log("🏢 Starting company scraping module...");
-        await companyScraper(db);
-        console.log("✅ Company scraping module completed.");
+		console.log('🏢 Starting company scraping module...');
+		const new_companies = await companyScraper(db);
+		console.log('✅ Company scraping module completed.');
 
-        console.log("🔧 Starting job processing module...");
-        await jobProcessor(db);
-        console.log("✅ Job processing module completed.");
+		console.log('🔧 Starting job processing module...');
+		const jobs_processed = await jobProcessor(db);
+		console.log('✅ Job processing module completed.');
 
 		// (Optional) Clear temporary data after processing
 		await new Promise((resolve, reject) => {
 			db.run('DELETE FROM newJobLinks', (err) => (err ? reject(err) : resolve()));
 		});
 
+
+
 		// Log results to database
 		await new Promise((resolve, reject) => {
 			db.run(
 				`INSERT INTO scraping_logs (timestamp, new_jobs, companies_scraped, jobs_processed, errors)
         VALUES (?, ?, ?, ?, ?)`,
-				[startTime.toISOString(), stats.newJobs, stats.companiesScraped, stats.jobsProcessed, JSON.stringify(stats.errors)],
+				[startTime.toISOString(), new_jobs, new_companies, jobs_processed, JSON.stringify(errors)],
 				(err) => {
 					if (err) reject(err);
 					else resolve();
@@ -94,13 +94,13 @@ async function runScrapingProcess() {
 
 		// Send Slack notification
 		const message = `
-🚀 Job Scraping Report (${startTime.toLocaleString()})
-----------------------------------------
-🆕 New jobs found: ${stats.newJobs}
-🏢 Companies scraped: ${stats.companiesScraped}
-🔧 Jobs processed: ${stats.jobsProcessed}
-${stats.errors.length > 0 ? `\n❌ Errors encountered:\n${stats.errors.join('\n')}` : '✅ No errors encountered'}
-`;
+		🚀 Job Scraping Report (${startTime.toLocaleString()})
+		----------------------------------------
+		🆕 New jobs found: ${jobs_processed}
+		🏢 Companies scraped: ${new_companies}
+		🔧 Jobs processed: ${jobs_processed}
+		${errors.length > 0 ? `\n❌ Errors encountered:\n${errors.join('\n')}` : '✅ No errors encountered'}
+		`;
 		await sendSlackNotification(message);
 	} catch (error) {
 		console.error('Error in scraping process:', error);
