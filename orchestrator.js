@@ -10,7 +10,7 @@ dotenv.config();
 // Import the scraping scripts
 import jobScraper from './job_scraper.js';
 import companyScraper from './company_scraper.js';
-import jobProcessor from './job_processor.js';
+import jobProcessor from './job_processor_web.js'; //CHANGE
 import initializeTables from './initializeDb.js';
 
 // Slack configuration
@@ -47,13 +47,13 @@ function closeDb(db) {
 // Main orchestration function
 async function runScrapingProcess() {
 	const startTime = new Date();
-	let errors = []
+	let errors = [];
 	try {
 		// Create & initialize the DB, and get the open connection
 		const db = await initializeTables();
 
 		// Use a proper limit (e.g. 5 for dev mode, or Infinity for production)
-		const limit = devMode ? 5 : Infinity;
+		const limit = devMode ? 50 : Infinity;
 
 		// Execute the scraping and processing modules using the same db connection.
 		console.log('🚀 Starting job scraping module...');
@@ -72,8 +72,6 @@ async function runScrapingProcess() {
 		await new Promise((resolve, reject) => {
 			db.run('DELETE FROM newJobLinks', (err) => (err ? reject(err) : resolve()));
 		});
-
-
 
 		// Log results to database
 		await new Promise((resolve, reject) => {
